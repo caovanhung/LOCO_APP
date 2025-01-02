@@ -1,0 +1,169 @@
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=2">
+    <script type="text/javascript">
+        function add(num1, num2) {
+            var result = num1 + num2;
+            return result;
+        }
+        function getPixelRGBValues(base64Image) {
+            let httpArray = [];
+            const maxNoOfColorsInCommandSting = 256;
+            let hybridAddressing = true;
+            const ledSetupSelection = "matrix";
+            let hexValueCheck = true;
+            let segmentValueCheck = true;
+            let segmentString = ''
+            let curlString = ''
+            let haString = ''
+            let haCommandCurlString = '';
+            let colorSeparatorStart = '\'';
+            let colorSeparatorEnd = '\'';
+            if (!hexValueCheck){
+                colorSeparatorStart = '[';
+                colorSeparatorEnd = ']';
+            }
+            let hasTransparency = false;
+            var canvas = document.createElement('canvas');
+            var context = canvas.getContext('2d');
+            var image = new Image();
+            image.src = base64Image;
+            let sizeX = 16;
+            let sizeY = 16;
+            canvas.width = sizeX;
+            canvas.height = sizeY;
+            context.drawImage(image, 0, 0, sizeX, sizeY);
+            var pixelData = context.getImageData(0, 0, sizeX, sizeY).data;
+            var pixelRGBValues = [];
+            let right2leftAdjust = 1;
+            if (ledSetupSelection == 'l2r'){
+            right2leftAdjust = 0;
+            }
+            for (var i = 0; i < pixelData.length; i += 4) {
+            var r = pixelData[i];
+            var g = pixelData[i + 1];
+            var b = pixelData[i + 2];
+            var a = pixelData[i + 3];
+            let pixel = i/4
+            let row = Math.floor(pixel/sizeX);
+            let led = pixel;
+            if (ledSetupSelection == 'matrix'){
+            }
+            else if ((row + right2leftAdjust) % 2 === 0) {
+            } else {
+                let indexOnRow = led - (row * sizeX);
+                let maxIndexOnRow = sizeX - 1;
+                let reversedIndexOnRow = maxIndexOnRow - indexOnRow;
+                led = (row * sizeX) + reversedIndexOnRow;
+            }
+            pixelRGBValues.push([r, g, b, a, led, pixel, row]);
+            }
+            pixelRGBValues.sort((a, b) => a[5] - b[5]);
+            let ledRGBValues = [... pixelRGBValues];
+            ledRGBValues.sort((a, b) => a[4] - b[4]);
+            let JSONledString = '';
+            let JSONledStringShort = '';
+            let segmentStart = -1;
+            let maxi = ledRGBValues.length;
+            let curentColorIndex = 0
+            let commandArray = [];
+            for (let i = 0; i < maxi; i++) {
+            let pixel = ledRGBValues[i];
+            let r = pixel[0];
+            let g = pixel[1];
+            let b = pixel[2];
+            let a = pixel[3];
+            let segmentString = '';
+            let segmentEnd = -1;
+            if(segmentValueCheck){
+                if (segmentStart < 0){
+                segmentStart = i;
+                }
+                if (i < maxi - 1){ 
+                let iNext = i + 1;
+                let nextPixel = ledRGBValues[iNext];
+                if (nextPixel[0] != r || nextPixel[1] != g || nextPixel[2] != b ){
+                    segmentEnd = i + 1
+                    if (segmentStart == i && hybridAddressing){
+                    if (JSONledString == ''){
+                        segmentString = '' + i + ',';
+                    } else{
+                        segmentString = ''
+                    }
+                    }
+                    else {
+                    segmentString = segmentStart + ',' + segmentEnd + ',';
+                    }
+                }
+                } else {
+                segmentEnd = i + 1;
+                if (segmentStart + 1 == segmentEnd && hybridAddressing){
+                    if (JSONledString == ''){
+                    segmentString = '' + i + ',';
+                    } else{
+                    segmentString = ''
+                    }
+                }
+                else {
+                    segmentString = segmentStart + ',' + segmentEnd + ','; 
+                }
+                }
+            } else{
+                if (JSONledString == ''){
+                JSONledString = i
+                }
+                segmentStart = i
+                segmentEnd = i  
+            }
+            if (a < 255){
+                hasTransparency = true;
+            }
+            if (segmentEnd > -1){
+                let colorValueString = r + ',' + g + ',' + b ;
+                if (hexValueCheck){
+                const [red, green, blue] = [r, g, b];
+                colorValueString = `${[red, green, blue].map(x => x.toString(16).padStart(2, '0')).join('')}`;
+                } else{
+                }
+                JSONledString = JSONledString + segmentString + colorSeparatorStart + colorValueString + colorSeparatorEnd;
+                fileJSON = JSONledString + segmentString + colorSeparatorStart + colorValueString + colorSeparatorEnd;
+                curentColorIndex = curentColorIndex + 1; // We've just added a new color to the string so up the count with one
+                if (curentColorIndex % maxNoOfColorsInCommandSting === 0 || i == maxi - 1) { 
+                commandArray.push(JSONledString);
+                JSONledString = '';
+                } else
+                {
+                JSONledString = JSONledString + ','
+                }
+                segmentStart = - 1;
+            }
+            }
+            base64Image = "[" + fileJSON + "]";
+
+            JSONledString = ''
+
+            //For evry commandString in the  array
+            for (let i = 0; i < commandArray.length; i++) {
+                let thisJSONledString = JSONledStringStart + 255 + JSONledStringMid1 + 0 + JSONledStringMid2 + commandArray[i] + JSONledStringEnd;
+                httpArray.push(thisJSONledString);
+
+                let thiscurlString = curlStart + document.getElementById('curlUrl').value + curlMid1 + thisJSONledString + curlEnd;
+
+                //Aggregated Strings That should be returned to the user
+                if (i > 0){
+                    JSONledString = JSONledString + '\n';
+                    curlString = curlString + ' && ';
+                }
+                JSONledString = JSONledString + thisJSONledString;
+                curlString = curlString + thiscurlString;
+            }
+            // console.log("[httpArray]" + httpArray);
+            return httpArray;
+        }
+    </script>
+</head>
+ 
+<body>
+    <p>Chuyển hình ảnh sang Matrix</p>
+</body>
+</html>

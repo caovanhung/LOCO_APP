@@ -1,0 +1,36 @@
+import 'package:flutter/material.dart';
+import 'package:webview_flutter/webview_flutter.dart';
+
+class Bufkes extends StatefulWidget {
+  Bufkes({Key? key}) : super(key: key);
+
+  @override
+  _Bufkes createState() => _Bufkes();
+}
+
+class _Bufkes extends State<Bufkes> {
+  final WebViewController _webViewController = WebViewController();
+
+  @override
+  void initState() {
+    super.initState();
+
+    _webViewController
+      ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..loadRequest(Uri.parse('https://bufkes.nl'));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      drawer: SideBar(),
+      appBar: AppBar(
+        centerTitle: true,
+        title: const Text('Bufkes (Tiel)'),
+      ),
+      body: WebViewWidget(
+        controller: _webViewController,
+      ),
+    );
+  }
+}
